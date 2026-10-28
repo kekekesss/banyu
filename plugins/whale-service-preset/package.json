@@ -1,0 +1,1 @@
+{"name":"whale-service-preset","version":"1.0.0","type":"module","license":"MIT","dsh":{"bundle":{"patch":"./preset.patch.yml"}}}

@@ -1,0 +1,14 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import fs from 'node:fs';
+import path from 'node:path';
+import {DshSessionCleanup} from '../src/dsh-session-cleanup.mjs';
+import {DshSessionBinding} from '../src/dsh-session-binding.mjs';
+
+const base=path.resolve('qa/dsh-session-binding-tests');fs.mkdirSync(base,{recursive:true});
+const identity='a'.repeat(64),other='b'.repeat(64);
+function fixture(t){const root=fs.mkdtempSync(path.join(base,'case-')),cwd=path.join(root,'workspace');fs.mkdirSync(cwd);let clock=100000;const cleanup=new DshSessionCleanup(root,{now:()=>clock});t.after(()=>cleanup.close());let current=identity,list=[],failure=false;const calls=[];const rpc=async(method,args)=>{calls.push([method,args]);if(method==='session/list')return {items:list};if(method==='workspace/archiveSession'){if(failure)throw Error('offline');return {}}throw Error('unexpected RPC');};const binding=new DshSessionBinding({cleanup,channel:'qq',rpc,expectedCwd:cwd,identity,identityNow:()=>current});return {cwd,cleanup,binding,calls,setList:v=>list=v,setFailure:v=>failure=v,setIdentity:v=>current=v,advance:()=>clock+=600000};}
+
+test('会话结束成功归档时同步移除记录；失败后排队并安全重试',async t=>{const f=fixture(t),one=f.binding.register('one');assert.deepEqual(await f.binding.finalize('one',one,{completed:true}),{archived:true,tracked:true});assert.equal(f.cleanup.stats().active,0);const two=f.binding.register('two');f.setFailure(true);await f.binding.finalize('two',two,{completed:true});assert.equal(f.cleanup.stats().pending,1);f.setFailure(false);f.setList([{sessionId:'two',cwd:f.cwd,running:false}]);assert.equal((await f.binding.retry()).completed,1);assert.equal(f.cleanup.stats().pending,0);assert.equal(f.calls.filter(([m])=>m==='workspace/archiveSession').length,3);});
+test('找不到会话、工作区不符或仍在运行时，不能取消或归档',async t=>{const f=fixture(t),entry=f.binding.register('safe');f.setFailure(true);await f.binding.finalize('safe',entry,{completed:false});f.setFailure(false);f.calls.length=0;for(const items of [[],[{sessionId:'safe',cwd:path.join(f.cwd,'other'),running:false}],[{sessionId:'safe',cwd:f.cwd,running:true}]]){f.setList(items);assert.equal((await f.binding.retry()).failed,1);assert.equal(f.cleanup.stats().cancelPending,1);f.advance();}assert.ok(f.calls.every(([m])=>m==='session/list'));f.setList([{sessionId:'safe',cwd:f.cwd,running:false}]);assert.equal((await f.binding.retry()).completed,1);assert.ok(f.calls.every(([m])=>m!=='session/cancel'));});
+test('服务身份变更或未知时不会对其他服务执行操作',async t=>{const f=fixture(t),entry=f.binding.register('bound');f.setFailure(true);await f.binding.finalize('bound',entry,{completed:true});f.calls.length=0;f.setIdentity(other);assert.equal((await f.binding.retry()).attempted,0);assert.equal(f.calls.length,0);f.setIdentity(null);assert.equal(await f.binding.retry(),undefined);assert.equal(f.cleanup.stats().pending,1);});

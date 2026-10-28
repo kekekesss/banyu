@@ -1,0 +1,34 @@
+# Dependencies and generated output
+node_modules/
+runtime/
+components/
+releases/
+downloads/
+Banyu.exe
+*.zip
+*.exe
+*.dll
+*.log
+
+# Local accounts, conversations, credentials, test output and caches
+data/
+logs/
+backups/
+qa/
+diagnostics/
+temp/
+.cache/
+.env
+.env.*
+*.sqlite
+*.sqlite-*
+*.db
+*.db-*
+**/secrets.json
+**/credentials.json
+**/machine-settings.json
+**/admin-token
+**/agent-token
+**/auth_token.txt
+.DS_Store
+Thumbs.db

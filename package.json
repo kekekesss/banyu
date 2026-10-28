@@ -1,0 +1,24 @@
+{
+  "name": "whale-service-desk",
+  "version": "2.7.2",
+  "private": true,
+  "type": "module",
+  "license": "MIT",
+  "description": "Banyu: a local AI companion and Agent workbench for QQ and Weixin; AI-assisted personal product project.",
+  "engines": {
+    "node": ">=24.0.0"
+  },
+  "scripts": {
+    "start": "node src/server.mjs",
+    "test": "node --test test/*.test.mjs",
+    "setup:dsh": "node scripts/setup-dsh.mjs",
+    "setup:qq": "node scripts/setup-native-qq.mjs"
+  },
+  "dependencies": {
+    "@tencent-connect/qqbot-nodejs": "1.0.5",
+    "qrcode": "1.5.4",
+    "@deepseek-ai/dsh-host-apiproxy": "0.1.1-rc.2",
+    "js-yaml": "4.3.2",
+    "ws": "8.22.0"
+  }
+}
